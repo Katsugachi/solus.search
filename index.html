@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>solus.search</title>
+<meta name="color-scheme" content="light dark" />
+<style>
+  :root {
+    /* Light mode defaults */
+    --bg: #f7f9fc;
+    --fg: #0f172a;
+    --muted: #64748b;
+    --panel-bg: #ffffff;
+    --panel-alt: #f3f6fb;
+    --border: rgba(2, 6, 23, 0.10);
+    --border-strong: rgba(2, 6, 23, 0.18);
+    --accent: #0ea5a8;
+    --accent-2: #60a5fa;
+    --good: #10b981;
+    --warn: #f59e0b;
+    --bad: #ef4444;
+    --radius: 14px;
+    --shadow: 0 6px 24px rgba(2, 6, 23, 0.06);
+  }
+  [data-theme="dark"] {
+    --bg: #0b1220;
+    --fg: #e6edf3;
+    --muted: #9fb0c5;
+    --panel-bg: rgba(255,255,255,0.06);
+    --panel-alt: rgba(255,255,255,0.04);
+    --border: rgba(255,255,255,0.12);
+    --border-strong: rgba(255,255,255,0.18);
+    --accent: #7dd3fc;
+    --accent-2: #a78bfa;
+    --good: #34d399;
+    --warn: #f59e0b;
+    --bad: #f87171;
+    --shadow: 0 8px 28px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box }
+  html, body { height: 100% }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 14px/1.55 Inter, ui-sans-serif, system-ui, Segoe UI, Roboto, Arial;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background .3s, color .3s;
+  }
+
+  .container { max-width: 1120px; margin: 20px auto 64px; padding: 0 18px }
+  header {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px }
+  .logo {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: conic-gradient(from 180deg, var(--accent), var(--accent-2), #a78bfa, var(--accent));
+    box-shadow: 0 8px 30px rgba(96,165,250,.25), inset 0 0 0 1px rgba(255,255,255,.35);
+  }
+  h1 { margin: 0; font-size: 20px; letter-spacing: 0.2px }
+  .subtitle { color: var(--muted); font-size: 13px }
+
+  .actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
+  .toggle {
+    border: 1px solid var(--border);
+    background: var(--panel-bg);
+    color: var(--fg);
+    border-radius: 999px;
+    padding: 8px 12px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
+    box-shadow: var(--shadow);
+    transition: background .25s, border-color .25s, transform .1s;
+  }
+  .toggle:active { transform: translateY(1px) }
+
+  .notice {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border-radius: 999px;
+    background: var(--panel-alt); border: 1px solid var(--border);
+    color: var(--muted); font-size: 12px;
+  }
+
+  .panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    box-shadow: var(--shadow);
+  }
+
+  .grid { display: grid; gap: 14px }
+  .g-2 { grid-template-columns: 1fr 1fr }
+  .g-3 { grid-template-columns: repeat(3, 1fr) }
+  @media (max-width: 980px) {
+    .g-2, .g-3 { grid-template-columns: 1fr }
+  }
+
+  .section-title { font-weight: 700; margin: 6px 0 6px }
+  .mini { font-size: 12px; color: var(--muted) }
+
+  label { font-weight: 600; display: block; margin-bottom: 6px }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center }
+  .row > * { flex: 1 }
+
+  input, select, textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    color: var(--fg);
+    outline: none;
+    transition: border-color .2s, box-shadow .2s, background .2s, color .2s;
+  }
+  textarea { min-height: 110px; font-family: ui-monospace, SFMono-Regular, Consolas, Menlo, monospace }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--accent-2);
+    box-shadow: 0 0 0 3px rgba(96,165,250,.18);
+  }
+
+  .btn {
+    appearance: none;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-weight: 700;
+    cursor: pointer;
+    color: #08131a;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    box-shadow: 0 8px 20px rgba(96,165,250,.25);
+    transition: transform .12s ease, box-shadow .2s ease, opacity .2s;
+    white-space: nowrap;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(96,165,250,.35) }
+  .btn:disabled { opacity: .6; cursor: not-allowed }
+  .btn.ghost {
+    background: transparent; color: var(--fg); border-color: var(--border);
+    box-shadow: none;
+  }
+
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center }
+  .status-pill { display: inline-flex; gap: 8px; align-items: center; padding: 6px 10px; border-radius: 999px; background: var(--panel-alt); border: 1px solid var(--border); color: var(--muted) }
+
+  .progress { height: 10px; border-radius: 999px; background: var(--panel-alt); border: 1px solid var(--border); overflow: hidden }
+  .bar { height: 100%; width: 0; background: linear-gradient(90deg,var(--accent),var(--accent-2)) }
+
+  .tabbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center }
+  .tab {
+    padding: 8px 12px; border-radius: 999px; background: var(--panel-alt); border: 1px solid var(--border);
+    cursor: pointer; font-weight: 600;
+  }
+  .tab.active { background: linear-gradient(90deg, #1f2937, #111827); color: #e5e7eb; border-color: var(--border-strong) }
+  [data-theme="dark"] .tab.active { background: linear-gradient(90deg, #111827, #0b1220) }
+
+  pre {
+    background: #0b1021; color: #e6edf3; border-radius: 10px; padding: 14px; overflow: auto; border: 1px solid var(--border);
+  }
+  [data-theme="dark"] pre { background: #0b1021 }
+  [data-theme=""] pre { background: #111827; color: #e5e7eb }
+
+  .kvi { display: grid; grid-template-columns: 180px 1fr; gap: 8px; margin: 6px 0 }
+  .kvi .k { color: var(--muted) }
+
+  .list { display: grid; gap: 8px }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel-alt); color: var(--muted); font-size: 12px }
+
+  a { color: #3b82f6; text-decoration: none }
+  a:hover { text-decoration: underline }
+
+  details { border: 1px dashed var(--border); border-radius: 10px; padding: 8px 10px; background: var(--panel-alt) }
+  details summary { cursor: pointer; font-weight: 700; margin: 6px 0 }
+
+  .msg { font-size: 12px; color: var(--muted) }
+  .ok { color: var(--good) } .warnc { color: var(--warn) } .bad { color: var(--bad) }
+
+  .divider { height: 1px; background: var(--border); margin: 8px 0; border-radius: 1px }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="brand">
+      <div class="logo" aria-hidden="true"></div>
+      <div>
+        <h1>solus.search</h1>
+        <div class="subtitle">parse.bot alternative</div>
+      </div>
+    </div>
+    <div class="actions">
+      <span class="notice">Use only with authorization</span>
+      <button class="toggle" id="themeToggle" title="Toggle light/dark" aria-label="Toggle theme">🌞 / 🌙</button>
+    </div>
+  </header>
+
+  <div class="grid g-2" style="align-items:start">
+    <div class="panel">
+      <div class="section-title">Source and scope</div>
+      <div class="grid">
+        <div class="row">
+          <div>
+            <label for="mode">Mode</label>
+            <select id="mode">
+              <option value="fetch" selected>Fetch URL</option>
+              <option value="paste">Paste HTML</option>
+              <option value="upload">Upload .html</option>
+            </select>
+          </div>
+          <div>
+            <label for="scope">Scope</label>
+            <select id="scope">
+              <option value="html">HTML only</option>
+              <option value="inline">HTML + inline scripts</option>
+              <option value="external" selected>HTML + inline + external scripts</option>
+            </select>
+          </div>
+          <div>
+            <label for="preset">Preset</label>
+            <select id="preset">
+              <option value="secrets" selected>Secrets & variables (safe)</option>
+              <option value="metadata">Metadata & structured data</option>
+              <option value="links">Links & endpoints</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <div>
+            <label for="masking">Masking</label>
+            <select id="masking">
+              <option value="partial" selected>Mask sensitive values</option>
+              <option value="full">Redact sensitive values</option>
+              <option value="off">No masking (authorized only)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label for="url">URL</label>
+          <input id="url" type="text" placeholder="https://example.com" />
+        </div>
+
+        <div>
+          <label for="proxy">Authorized proxy (for CORS bypass)</label>
+          <input id="proxy" type="text" placeholder="e.g., https://proxy.yourdomain.tld/" />
+          <div class="mini">Enable CORS bypass below to route cross‑origin requests via your proxy. Only use proxies you control.</div>
+        </div>
+
+        <div class="row" style="align-items:center">
+          <div style="flex:0 0 auto">
+            <label for="corsBypass">CORS bypass</label>
+            <div class="row" style="gap:8px; align-items:center">
+              <input type="checkbox" id="corsBypass" style="flex:0 0 auto; width:auto" />
+              <span class="mini">Use authorized proxy for cross‑origin requests</span>
+            </div>
+          </div>
+          <div style="flex:1">
+            <details>
+              <summary>Proxy Setup</summary>
+              <div class="mini">Run a small server you own that fetches the target and returns it with permissive CORS headers. Example (Node/Express):</div>
+              <pre><code>import express from 'express';
+import fetch from 'node-fetch';
+const app = express();
+app.get('/proxy', async (req, res) =&gt; {
+  const url = req.query.url;
+  if(!url) return res.status(400).json({error:'url required'});
+  // Allowlist domains you own or have authorization for:
+  const allowed = [/yourdomain\.tld$/, /partner\.example$/];
+  try {
+    const h = new URL(url).hostname;
+    if(!allowed.some(rx =&gt; rx.test(h))) return res.status(403).json({error:'not allowed'});
+  } catch { return res.status(400).json({error:'bad url'}); }
+  try {
+    const r = await fetch(url, { redirect: 'follow' });
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Vary','Origin');
+    res.status(r.status);
+    r.body.pipe(res);
+  } catch(e) {
+    res.status(502).json({error:String(e)});
+  }
+});
+app.listen(8787);</code></pre>
+              <div class="mini">Use: https://proxy.yourdomain.tld/proxy?url=https://target.tld/file.js</div>
+            </details>
+          </div>
+        </div>
+
+        <div id="pasteWrapper" style="display:none">
+          <label for="html">Paste HTML</label>
+          <textarea id="html" placeholder="Paste HTML here for analysis..."></textarea>
+        </div>
+
+        <details>
+          <summary>Advanced controls</summary>
+          <div class="grid g-3" style="margin-top:8px">
+            <div>
+              <label for="maxScripts">Max external scripts</label>
+              <select id="maxScripts">
+                <option value="0">0</option>
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="20">20</option>
+              </select>
+            </div>
+            <div>
+              <label for="timeout">Request timeout</label>
+              <select id="timeout">
+                <option value="3000">3s</option>
+                <option value="6000" selected>6s</option>
+                <option value="10000">10s</option>
+                <option value="20000">20s</option>
+              </select>
+            </div>
+            <div>
+              <label for="sizeCap">Max script size</label>
+              <select id="sizeCap">
+                <option value="200000">200 KB</option>
+                <option value="500000" selected>500 KB</option>
+                <option value="1000000">1 MB</option>
+              </select>
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Variable and pattern search</div>
+      <div class="grid">
+        <div class="row">
+          <div>
+            <label for="varsPreset">Variable presets</label>
+            <select id="varsPreset">
+              <option value="__NEXT_DATA__,__NUXT__,__APOLLO_STATE__,__REDUX_STATE__,__INITIAL_STATE__,__ENV__,env" selected>Common app state</option>
+              <option value="auth,token,jwt,apiKey,api_key,bearer">Auth & API</option>
+              <option value="stripe,paypal,firebase,aws,google,github">Popular vendors</option>
+              <option value="">None</option>
+            </select>
+          </div>
+          <div>
+            <label for="secretLevel">Secret scan</label>
+            <select id="secretLevel">
+              <option value="basic" selected>Basic</option>
+              <option value="extended">Extended</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label for="varNames">Variable names or prefixes</label>
+          <input id="varNames" type="text" placeholder="Comma‑separated. e.g., __NEXT_DATA__, __NUXT__, window.__INITIAL_STATE__, apiKey" />
+        </div>
+
+        <div>
+          <label for="customRegex">Custom regex patterns (one per line)</label>
+          <textarea id="customRegex" placeholder="Example: api[_-]?key[\"']?\\s*[:=]\\s*[\"']?([A-Za-z0-9_\\-]{16,})"></textarea>
+          <div class="mini">First capture group is returned when present; otherwise full match. Use responsibly.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="toolbar">
+      <button class="btn" id="run">Scan</button>
+      <button class="btn ghost" id="stop" disabled>Stop</button>
+      <button class="btn ghost" id="previewBtn">Preview only</button>
+      <span class="status-pill"><span id="status">Idle</span></span>
+    </div>
+    <div class="progress" style="margin-top:10px"><div class="bar" id="bar"></div></div>
+    <div class="mini" id="subStatus" style="margin-top:6px"></div>
+  </div>
+
+  <div class="grid g-2">
+    <div class="panel">
+      <div class="tabbar">
+        <div class="tab active" data-tab="report">Report</div>
+        <div class="tab" data-tab="json">JSON</div>
+      </div>
+      <div id="panel-report" style="margin-top:10px">
+        <div class="section-title">Summary</div>
+        <div class="kvi"><div class="k">URL</div><div id="k-url">—</div></div>
+        <div class="kvi"><div class="k">Pages scanned</div><div id="k-pages">1</div></div>
+        <div class="kvi"><div class="k">Scripts analyzed</div><div id="k-scripts">0</div></div>
+        <div class="kvi"><div class="k">Findings</div><div id="k-findings">0</div></div>
+
+        <div class="divider"></div>
+
+        <div class="section-title">Potential secrets (masked)</div>
+        <div id="secrets" class="list"></div>
+
+        <div class="section-title">Variables</div>
+        <div id="variables" class="list"></div>
+
+        <div class="section-title">Endpoints & links</div>
+        <div id="endpoints" class="list"></div>
+
+        <div class="section-title">Metadata</div>
+        <div id="metadata" class="list"></div>
+      </div>
+      <div id="panel-json" style="display:none; margin-top:10px">
+        <pre id="out">[ ]</pre>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Export</div>
+      <div class="row" style="align-items:flex-end">
+        <div>
+          <label for="exportFormat">Format</label>
+          <select id="exportFormat">
+            <option value="json" selected>JSON (full report)</option>
+            <option value="txt">TXT (human-readable)</option>
+          </select>
+        </div>
+        <div class="row" style="flex: 0 0 auto; gap:8px">
+          <button class="btn" id="copy">Copy</button>
+          <button class="btn" id="download">Download</button>
+        </div>
+      </div>
+
+      <div class="divider" style="margin:12px 0"></div>
+
+      <div class="section-title">Live preview</div>
+      <iframe id="preview" sandbox="" style="width:100%;height:420px;border:1px solid var(--border);border-radius:12px;background:#fff"></iframe>
+      <div class="msg">Preview renders the fetched/pasted HTML in a sandbox. External resources may not load due to CORS or CSP.</div>
+    </div>
+  </div>
+
+  <div class="msg">Ethics: Use solus.search only on sites you own or have explicit authorization to assess. Do not collect personal data or bypass protections you don’t control.</div>
+</div>
+
+<script>
+(function(){
+  const d = document, $ = s => d.querySelector(s);
+  const root = d.documentElement;
+
+  // THEME TOGGLE
+  const themeBtn = $('#themeToggle');
+  const savedTheme = localStorage.getItem('solusTheme');
+  if(savedTheme) root.setAttribute('data-theme', savedTheme === 'dark' ? 'dark' : '');
+  themeBtn?.addEventListener('click', () => {
+    const isDark = root.getAttribute('data-theme') === 'dark';
+    root.setAttribute('data-theme', isDark ? '' : 'dark');
+    localStorage.setItem('solusTheme', isDark ? 'light' : 'dark');
+  });
+
+  // ELEMENTS
+  const status = $('#status'), sub = $('#subStatus'), bar = $('#bar');
+  const iframe = $('#preview'), outEl = $('#out');
+  const tabs = d.querySelectorAll('.tab');
+  const modeEl = $('#mode'), urlEl = $('#url'), htmlEl = $('#html'), pasteWrap = $('#pasteWrapper');
+
+  // DEFAULTS: mode = fetch
+  modeEl.addEventListener('change', () => {
+    const m = modeEl.value;
+    if(m === 'fetch'){ pasteWrap.style.display = 'none'; }
+    if(m === 'paste'){ pasteWrap.style.display = 'block'; }
+    if(m === 'upload'){ pasteWrap.style.display = 'block'; triggerUpload(); }
+  });
+
+  // TAB SWITCHING
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    $('#panel-report').style.display = t.dataset.tab === 'report' ? 'block' : 'none';
+    $('#panel-json').style.display = t.dataset.tab === 'json' ? 'block' : 'none';
+  }));
+
+  // FILE UPLOAD
+  const fileInput = d.createElement('input'); fileInput.type='file'; fileInput.accept='.html,.htm,.txt';
+  fileInput.addEventListener('change', async () => {
+    const f = fileInput.files[0]; if(!f) return;
+    const t = await f.text(); htmlEl.value = t; renderPreview(t); setStatus('File loaded');
+  });
+  function triggerUpload(){ fileInput.click(); }
+
+  // BUTTONS
+  $('#previewBtn').addEventListener('click', () => {
+    const src = getSource();
+    renderPreview(src.html);
+    setStatus('Preview updated');
+  });
+
+  $('#run').addEventListener('click', runScan);
+  $('#stop').addEventListener('click', () => state.stop = true);
+  $('#copy').addEventListener('click', () => {
+    const data = getExport();
+    navigator.clipboard.writeText(data).then(()=>{
+      sub.textContent = 'Copied to clipboard';
+      setTimeout(() => { sub.textContent=''; }, 1200);
+    });
+  });
+  $('#download').addEventListener('click', () => {
+    const fmt = $('#exportFormat').value;
+    const text = getExport();
+    const name = 'solus.search.' + (fmt === 'json' ? 'json' : 'txt');
+    const blob = new Blob([text], {type: fmt==='json'?'application/json':'text/plain'});
+    const a = d.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  // STATE
+  const state = { stop:false, results:null };
+
+  function setStatus(msg){ status.textContent = msg; }
+  function setBar(p){ bar.style.width = Math.max(0,Math.min(100,p)) + '%'; }
+
+  function getSource(){
+    const mode = $('#mode').value;
+    let html = '';
+    if(mode === 'paste' || mode === 'upload') html = $('#html').value || '';
+    return { mode, html };
+  }
+
+  function renderPreview(html){ iframe.srcdoc = html || ''; }
+
+  function disable(run){
+    $('#run').disabled = run;
+    $('#stop').disabled = !run;
+    $('#previewBtn').disabled = run;
+  }
+
+  function getConfig(){
+    const mode = $('#mode').value;
+    const scope = $('#scope').value;
+    const url = $('#url').value.trim();
+    const proxy = $('#proxy').value.trim();
+    const corsBypass = $('#corsBypass').checked;
+    const html = $('#html').value;
+    const preset = $('#preset').value;
+    const maxScripts = parseInt($('#maxScripts').value,10);
+    const timeout = parseInt($('#timeout').value,10);
+    const sizeCap = parseInt($('#sizeCap').value,10);
+    const varPreset = ($('#varsPreset').value || '').trim();
+    const varNames = (varPreset ? varPreset : '') + (',' + ($('#varNames').value||''));
+    const mask = $('#masking').value;
+    const secretLevel = $('#secretLevel').value;
+    const customRegex = $('#customRegex').value;
+
+    return { mode, scope, url, proxy, corsBypass, html, preset, maxScripts, timeout, sizeCap,
+             varNames: toVarList(varNames), secretLevel, masking: mask, customRegex };
+  }
+
+  function toVarList(s){
+    return [...new Set((s||'').split(',').map(x=>x.trim()).filter(Boolean))].slice(0,100);
+  }
+
+  function isCrossOrigin(targetUrl){
+    try {
+      const t = new URL(targetUrl, location.href);
+      return t.origin !== location.origin;
+    } catch { return true; }
+  }
+
+  async function safeFetchText(url, timeoutMs, cfg){
+    let target = url;
+    if(cfg.corsBypass){
+      if(!cfg.proxy) throw new Error('CORS bypass is enabled but no proxy URL is set.');
+      if(isCrossOrigin(url)) target = cfg.proxy.replace(/\/$/, '') + (cfg.proxy.includes('?') ? '&' : (cfg.proxy.endsWith('/proxy') || cfg.proxy.endsWith('/proxy/') ? '' : '')) + (cfg.proxy.endsWith('/proxy') || cfg.proxy.endsWith('/proxy/') ? '?url=' : '') + url;
+      // Note: if your proxy expects a different pattern, set cfg.proxy accordingly (e.g., https://proxy.tld/proxy?url=)
+    }
+    const ctrl = new AbortController();
+    const to = setTimeout(()=>ctrl.abort(), timeoutMs||6000);
+    try{
+      const res = await fetch(target, { signal: ctrl.signal, credentials:'omit' });
+      if(!res.ok) throw new Error(res.status+' '+res.statusText);
+      return await res.text();
+    }finally{ clearTimeout(to); }
+  }
+
+  function absolutize(href, base){
+    try{ return new URL(href, base).toString(); }catch{ return href; }
+  }
+
+  function gatherMetadata(doc, base){
+    const pick = sel => doc.querySelector(sel)?.getAttribute('content') || '';
+    const ld = [...doc.querySelectorAll('script[type="application/ld+json"]')].map(s=>{
+      try{ return JSON.parse(s.textContent); }catch{ return null; }
+    }).filter(Boolean);
+    const og = {};
+    [...doc.querySelectorAll('meta[property^="og:"]')].forEach(m => og[m.getAttribute('property')] = m.getAttribute('content'));
+    const tw = {};
+    [...doc.querySelectorAll('meta[name^="twitter:"]')].forEach(m => tw[m.getAttribute('name')] = m.getAttribute('content'));
+    const icons = [...doc.querySelectorAll('link[rel*="icon"]')].map(l=>absolutize(l.href, base));
+    const frameworkHints = [
+      {k:'Next.js', v: !!doc.querySelector('#__NEXT_DATA__')},
+      {k:'Nuxt', v: !!doc.querySelector('#__NUXT__')},
+      {k:'Remix', v: !!doc.querySelector('meta[name="remix-params"]')},
+      {k:'Vite', v: !![...doc.querySelectorAll('script[src]')].some(s=>/\/@vite\//.test(s.src))},
+      {k:'WordPress', v: !!doc.querySelector('meta[name="generator"][content*="WordPress"]')},
+      {k:'Shopify', v: !!doc.querySelector('meta[id="shopify-digital-wallet"]')}
+    ].filter(x=>x.v).map(x=>x.k);
+    return {
+      title: doc.title || '',
+      description: pick('meta[name="description"]'),
+      og, twitter: tw, ld,
+      icons, frameworkHints
+    };
+  }
+
+  function gatherLinks(doc, base){
+    const allLinks = [...doc.querySelectorAll('a[href]')].map(a=>absolutize(a.getAttribute('href'), base));
+    const links = allLinks.filter(Boolean);
+    const endpoints = links.filter(u=>/\/api\/|\/v\d+\/|graphql|api\.|\.json($|\?)/i.test(u));
+    const emails = [...new Set(links.filter(u=>u.startsWith('mailto:')).map(u=>u.replace(/^mailto:/,'')))];
+    const social = links.filter(u=>/(twitter|x\.com|github|linkedin|facebook|instagram|tiktok)\.com/i.test(u));
+    return { links, endpoints: [...new Set(endpoints)], emails, social };
+  }
+
+  async function collectScripts(doc, cfg){
+    const inline = [...doc.querySelectorAll('script:not([src])')].map(s=>s.textContent||'');
+    let external = [...doc.querySelectorAll('script[src]')].map(s=>s.getAttribute('src')).filter(Boolean);
+    external = external.slice(0, cfg.maxScripts);
+    const analyzed = [];
+    let externalCount = 0;
+
+    if(cfg.scope === 'external' && external.length){
+      for(const src of external){
+        if(state.stop) break;
+        const abs = absolutize(src, cfg.url || location.href);
+        try{
+          const text = await safeFetchText(abs, cfg.timeout, cfg);
+          if(text && text.length <= cfg.sizeCap){ analyzed.push({url:abs, text}); externalCount++; }
+        }catch(e){ /* ignore */ }
+        setBar(Math.min(90, (analyzed.length / Math.max(1, external.length)) * 60));
+      }
+    }
+
+    const inlinePack = inline.map((t,i)=>({url:`inline://${i+1}`, text:t}));
+    const scopePack = cfg.scope==='html' ? [] : (cfg.scope==='inline' ? inlinePack : inlinePack.concat(analyzed));
+    return { analyzed: scopePack, inlineCount: inline.length, externalCount };
+  }
+
+  function buildCorpus(doc, scripts, scope){
+    const corpus = [];
+    corpus.push({ part:'html', url:'document', text: doc.documentElement.outerHTML.slice(0, 2_000_000) });
+    if(scope!=='html'){
+      scripts.analyzed.forEach(s => {
+        corpus.push({ part:'script', url:s.url, text: s.text.slice(0, 2_000_000) });
+      });
+    }
+    return corpus;
+  }
+
+  function scanVariables(corpus, names){
+    if(!names || !names.length) return [];
+    const res = [];
+    // Match explicit property names and global assigns
+    const escaped = names.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const rxProp = new RegExp(`(?:"|')(${escaped.join('|')})(?:"|')\\s*:\\s*([\\s\\S]{1,500})`, 'gi');
+    const rxVar = new RegExp(`(?:window\\.|self\\.|globalThis\\.|^|\\s)(?:${escaped.join('|')})\\s*[:=]\\s*([\\s\\S]{1,500})`, 'gi');
+
+    corpus.forEach(c => {
+      let m; const hits = new Set(); let count = 0;
+      while((m = rxProp.exec(c.text)) && count < 10){ hits.add(maskValue(m[2], 'partial')); count++; }
+      while((m = rxVar.exec(c.text)) && count < 10){ hits.add(maskValue(m[1], 'partial')); count++; }
+      const arr = [...hits].slice(0,10);
+      if(arr.length) res.push({ location:c.url, matches: arr });
+    });
+    return res;
+  }
+
+  function scanSecrets(corpus, level, masking){
+    const findings = [];
+    const patterns = [];
+    patterns.push({ label:'API key (generic)', re:/api[_-]?key["']?\s*[:=]\s*["']?([A-Za-z0-9_\-]{16,})/gi });
+    patterns.push({ label:'Token (generic)', re:/(?:access|auth|api)?[_-]?token["']?\s*[:=]\s*["']?([A-Za-z0-9\-\._~]{16,})/gi });
+    patterns.push({ label:'Bearer token', re:/\bBearer\s+([A-Za-z0-9\-\._~]+)\b/gi });
+    patterns.push({ label:'JWT', re:/\b([A-Za-z0-9-_]{10,}\.[A-Za-z0-9-_]{10,}\.[A-Za-z0-9-_]{10,})\b/g });
+    if(level==='extended'){
+      patterns.push({ label:'Basic auth', re:/Authorization["']?\s*[:=]\s*["']?Basic\s+([A-Za-z0-9+\/=]{8,})/gi });
+      patterns.push({ label:'Client secret (generic)', re:/(client[_-]?secret)["']?\s*[:=]\s*["']?([A-Za-z0-9_\-]{12,})/gi, group:2 });
+      patterns.push({ label:'X-API-KEY header', re:/x-api-key["']?\s*[:=]\s*["']?([A-Za-z0-9\-_]{12,})/gi });
+    }
+
+    corpus.forEach(c => {
+      patterns.forEach(p => {
+        let m, count=0;
+        while((m = p.re.exec(c.text)) && count < 10){
+          const g = p.group || 1;
+          const raw = m[g] || m[1] || m[0];
+          findings.push({
+            type: p.label,
+            value: maskValue(raw, masking),
+            location: c.url
+          });
+          count++;
+        }
+      });
+    });
+    return findings;
+  }
+
+  function scanCustom(corpus, regexBlock, masking){
+    const out = [];
+    const lines = (regexBlock||'').split('\n').map(s=>s.trim()).filter(Boolean).slice(0,50);
+    lines.forEach((line,i)=>{
+      let re; try{ re = new RegExp(line, 'gi'); }catch(e){ return; }
+      corpus.forEach(c=>{
+        let m, count=0;
+        while((m=re.exec(c.text)) && count<10){
+          const val = m[1] || m[0];
+          out.push({ type:`Custom #${i+1}`, value: maskValue(val, masking), location:c.url });
+          count++;
+        }
+      });
+    });
+    return out;
+  }
+
+  function maskValue(v, mode){
+    const s = String(v).trim().replace(/\s+/g,' ');
+    if(mode==='full') return '[REDACTED]';
+    if(mode==='off') return s;
+    if(s.length <= 8) return s.slice(0,2) + '…' + s.slice(-2);
+    return s.slice(0,6)+'…'+s.slice(-4);
+  }
+
+  function fillList(sel, arr, render){
+    const el = $(sel); el.innerHTML='';
+    if(!arr || !arr.length){ el.innerHTML = '<div class="msg">No items</div>'; return; }
+    arr.forEach(x => {
+      const div = d.createElement('div'); div.innerHTML = render(x); el.appendChild(div);
+    });
+  }
+
+  function renderFinding(f){
+    const cls = /token|secret|key|jwt/i.test(f.type) ? 'warnc' : 'ok';
+    return `<div><span class="badge">${f.type}</span> <span class="${cls}">${escapeHtml(f.value)}</span> <span class="mini">in ${escapeHtml(f.location)}</span></div>`;
+  }
+
+  function renderVar(v){
+    return `<div><span class="badge">var</span> ${v.matches.map(m=>`<code>${escapeHtml(String(m)).slice(0,140)}</code>`).join(' ')} <span class="mini">in ${escapeHtml(v.location)}</span></div>`;
+  }
+
+  function metaToItems(meta){
+    const items = [];
+    if(meta.title) items.push(`<div><span class="badge">title</span> ${escapeHtml(meta.title)}</div>`);
+    if(meta.description) items.push(`<div><span class="badge">description</span> ${escapeHtml(meta.description)}</div>`);
+    if(meta.frameworkHints?.length) items.push(`<div><span class="badge">framework</span> ${meta.frameworkHints.map(h=>`<code>${h}</code>`).join(' ')}</div>`);
+    if(Object.keys(meta.og||{}).length) items.push(`<div><span class="badge">og</span> ${Object.entries(meta.og).map(([k,v])=>`<code>${escapeHtml(k)}</code>`).join(' ')}</div>`);
+    if(Object.keys(meta.twitter||{}).length) items.push(`<div><span class="badge">twitter</span> ${Object.keys(meta.twitter).map(k=>`<code>${escapeHtml(k)}</code>`).join(' ')}</div>`);
+    if(meta.icons?.length) items.push(`<div><span class="badge">icons</span> ${meta.icons.slice(0,5).map(u=>`<a href="${u}" target="_blank" rel="noreferrer">icon</a>`).join(' ')}</div>`);
+    if(meta.ld?.length) items.push(`<div><span class="badge">json‑ld</span> ${meta.ld.map(x=>`<code>${Array.isArray(x['@type'])?x['@type'].join('|'):x['@type']||'Thing'}</code>`).join(' ')}</div>`);
+    return items;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function getExport(){
+    const fmt = $('#exportFormat').value;
+    const json = state.results || {};
+    if(fmt==='json') return JSON.stringify(json, null, 2);
+    const lines = [];
+    lines.push(`solus.search report`);
+    lines.push(`URL: ${json.url||''}`);
+    lines.push(`Scope: ${json.scope||''}`);
+    lines.push(`Scripts analyzed: ${json.scriptsAnalyzed||0}`);
+    lines.push(`Findings: ${(json.secrets?.length||0)+(json.variables?.length||0)}`);
+    lines.push(``);
+    lines.push(`[Potential secrets]`);
+    (json.secrets||[]).forEach(s=>lines.push(` - ${s.type}: ${s.value} (${s.location})`));
+    lines.push(``);
+    lines.push(`[Variables]`);
+    (json.variables||[]).forEach(v=>v.matches.forEach(m=>lines.push(` - ${m} (${v.location})`)));
+    lines.push(``);
+    lines.push(`[Endpoints]`);
+    (json.endpoints||[]).forEach(e=>lines.push(` - ${e}`));
+    lines.push(``);
+    lines.push(`[Emails]`);
+    (json.emails||[]).forEach(e=>lines.push(` - ${e}`));
+    lines.push(``);
+    lines.push(`[Social]`);
+    (json.social||[]).forEach(e=>lines.push(` - ${e}`));
+    return lines.join('\n');
+  }
+
+  // Preset helper
+  $('#preset').addEventListener('change', () => {
+    const p = $('#preset').value;
+    if(p==='secrets'){
+      $('#scope').value = 'external';
+      $('#secretLevel').value = 'basic';
+    }else if(p==='metadata'){
+      $('#scope').value = 'html';
+      $('#secretLevel').value = 'basic';
+    }else if(p==='links'){
+      $('#scope').value = 'html';
+      $('#secretLevel').value = 'basic';
+    }
+  });
+
+  // MAIN SCAN
+  async function runScan(){
+    state.stop = false; setBar(0); setStatus('Starting…'); sub.textContent='';
+    disable(true);
+    try{
+      const cfg = getConfig();
+      const baseURL = cfg.url;
+      if(cfg.mode==='fetch' && !baseURL) throw new Error('Enter a URL to fetch');
+      if(cfg.corsBypass && !cfg.proxy) throw new Error('Enable CORS bypass requires an authorized proxy URL.');
+
+      // Fetch page HTML if needed
+      let html = cfg.mode==='fetch' ? await safeFetchText(cfg.url, cfg.timeout, cfg) : cfg.html;
+      if(!html) throw new Error('No HTML available');
+
+      renderPreview(html);
+
+      // Parse HTML
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+
+      // Collect metadata
+      const meta = gatherMetadata(doc, baseURL);
+
+      // Collect links and endpoints
+      const links = gatherLinks(doc, baseURL);
+
+      setBar(25); setStatus('Collecting scripts…');
+
+      // Gather scripts: inline + external (optional)
+      const scripts = await collectScripts(doc, cfg);
+
+      setBar(55); setStatus('Building corpus…');
+
+      // Build corpus for scans
+      const corpus = buildCorpus(doc, scripts, cfg.scope);
+
+      setBar(65); setStatus('Scanning variables…');
+
+      // Scan variables
+      const varFindings = scanVariables(corpus, cfg.varNames);
+
+      setBar(75); setStatus('Scanning potential secrets…');
+
+      // Scan for secrets (masked/redacted)
+      const secretFindings = scanSecrets(corpus, cfg.secretLevel, cfg.masking);
+
+      // Custom regex
+      const customFindings = scanCustom(corpus, cfg.customRegex, cfg.masking);
+
+      // Compose report
+      const report = {
+        url: baseURL || 'about:blank',
+        scope: cfg.scope,
+        scriptsAnalyzed: scripts.analyzed.length,
+        inlineScripts: scripts.inlineCount,
+        externalScripts: scripts.externalCount,
+        metadata: meta,
+        endpoints: links.endpoints,
+        emails: links.emails,
+        social: links.social,
+        links: links.links.slice(0, 200),
+        variables: varFindings,
+        secrets: secretFindings.concat(customFindings),
+        generatedAt: new Date().toISOString()
+      };
+      state.results = report;
+
+      // Update UI
+      $('#k-url').textContent = report.url;
+      $('#k-pages').textContent = '1';
+      $('#k-scripts').textContent = String(report.scriptsAnalyzed);
+      $('#k-findings').textContent = String((report.secrets?.length||0) + (report.variables?.length||0));
+
+      fillList('#secrets', report.secrets, f => renderFinding(f));
+      fillList('#variables', report.variables, v => renderVar(v));
+      fillList('#endpoints', report.endpoints, e => `<div><span class="badge">endpoint</span> <a href="${e}" target="_blank" rel="noreferrer">${e}</a></div>`);
+      fillList('#metadata', metaToItems(report.metadata), i => i);
+
+      outEl.textContent = JSON.stringify(report, null, 2);
+      tabs.forEach(x => x.classList.remove('active')); tabs[0].classList.add('active');
+      $('#panel-report').style.display='block'; $('#panel-json').style.display='none';
+
+      setBar(100); setStatus('Done');
+    }catch(err){
+      setStatus('Error'); sub.textContent = err.message || String(err);
+    }finally{
+      disable(false);
+    }
+  }
+})();
+</script>
+</body>
+</html>
+```
